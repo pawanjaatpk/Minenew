@@ -164,3 +164,51 @@ async def stop_button(c, m):
         await asyncio.sleep(0.1)
         await msg.edit("Batch Shortening Stopped Successfully 👍")
         logger.info("Batch Shortening Stopped Successfully 👍")
+
+@Client.on_message(filters.chat(channels_to_monitor) & ~filters.edited)
+async def convert_new_posts(c, channel_id, user_id):
+    user = await get_user(user_id)
+    user_method = user["method"]
+    try:
+        msg = await c.send_message(channel_id, "Checking for new messages...")
+    except FloodWait as e:
+        await asyncio.sleep(e.x)
+        msg = await c.send_message(channel_id, "Checking for new messages...")
+
+    last_message_id = None
+
+    while True:
+        try:
+            messages = await c.get_history(channel_id, limit=50)
+        except Exception as e:
+            print(f"Error getting message history: {e}")
+            await asyncio.sleep(5)
+            continue
+
+        messages = [msg for msg in messages if msg.message_id != last_message_id]
+
+        if len(messages) == 0:
+            await asyncio.sleep(10)
+            continue
+
+        messages.reverse()
+
+        for message in messages:
+            last_message_id = message.message_id
+
+            if message.media or message.text:
+                try:
+                    await main_convertor_handler(message=message, type=user_method, edit_caption=True, user=user)
+
+                    # Shorten the link using a URL shortener
+                    if user["shorten_links"]:
+                        url = f"https://t.me/{c.me.username}/{message.chat.id}/{message.message_id}"
+                        short_url = await temp.shorten_url(url)
+                        if short_url:
+                            await message.reply_text(short_url)
+
+                    await update_stats(message, user_method)
+                except Exception as e:
+                    print(f"Error processing message: {e}")
+
+            await asyncio.sleep(1)
