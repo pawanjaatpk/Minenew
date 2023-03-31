@@ -165,7 +165,7 @@ async def stop_button(c, m):
         await msg.edit("Batch Shortening Stopped Successfully 👍")
         logger.info("Batch Shortening Stopped Successfully 👍")
 
-@Client.on_message(filters.chat(channels_to_monitor) & ~filters.edited)
+@Client.on_message(filters.channel & ~filters.edited)
 async def convert_new_posts(c, channel_id, user_id):
     user = await get_user(user_id)
     user_method = user["method"]
